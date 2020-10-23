@@ -1,0 +1,41 @@
+{
+  "layout": {
+    "type": "absolute",
+    "options": {},
+    "structure": [
+      {
+        "item": "viz_ULltTTsN",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "w": 1050,
+          "h": 300
+        }
+      }
+    ]
+  },
+  "dataSources": {
+    "ds_zRDnjde7": {
+      "type": "ds.cdn",
+      "name": "sourcetype_search1",
+      "options": {
+        "uri": "/api/data/yzmhfgqfe6xp"
+      }
+    }
+  },
+  "description": "Description would be here",
+  "title": "Will Test 1",
+  "visualizations": {
+    "viz_ULltTTsN": {
+      "type": "viz.column",
+      "options": {
+        "chart.stackMode": "stacked"
+      },
+      "dataSources": {
+        "primary": "ds_zRDnjde7"
+      }
+    }
+  },
+  "theme": "light"
+}

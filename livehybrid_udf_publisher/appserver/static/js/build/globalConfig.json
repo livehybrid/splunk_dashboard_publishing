@@ -1,0 +1,119 @@
+{
+    "pages": {
+        "configuration": {
+            "description": "Set up the UDF Publisher",
+            "tabs": [
+                {
+                    "entity": [
+                        {
+                            "field": "loglevel", 
+                            "options": {
+                                "disableSearch": true, 
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "DEBUG", 
+                                        "value": "DEBUG"
+                                    }, 
+                                    {
+                                        "label": "INFO", 
+                                        "value": "INFO"
+                                    }, 
+                                    {
+                                        "label": "WARNING", 
+                                        "value": "WARNING"
+                                    }, 
+                                    {
+                                        "label": "ERROR", 
+                                        "value": "ERROR"
+                                    }, 
+                                    {
+                                        "label": "CRITICAL", 
+                                        "value": "CRITICAL"
+                                    }
+                                ]
+                            }, 
+                            "label": "Log level", 
+                            "type": "singleSelect", 
+                            "defaultValue": "INFO"
+                        }
+                    ], 
+                    "title": "Logging", 
+                    "name": "logging"
+                }, 
+                {
+                    "entity": [
+                        {
+                            "help": "This is the aws_access_key used by commands within this app",
+                            "required": false,
+                            "validators": [
+                                {
+                                    "minLength": 0,
+                                    "type": "string",
+                                    "errorMsg": "Max length of text input is 20",
+                                    "maxLength": 20
+                                }
+                            ],
+                            "type": "text",
+                            "label": "AWS Access Key",
+                            "defaultValue": "",
+                            "field": "aws_access_key",
+                            "options": {
+                                "placeholder": "ABCDEFGHIJKLMNOPQRST"
+                            }
+                        },
+                        {
+                            "help": "This is the aws_secret_key used by commands within this app",
+                            "required": false,
+                            "encrypted": true,
+                            "validators": [
+                                {
+                                    "minLength": 0,
+                                    "type": "string",
+                                    "errorMsg": "Max length of text input is 8192",
+                                    "maxLength": 8192
+                                }
+                            ],
+                            "type": "text",
+                            "label": "AWS Secret Key",
+                            "defaultValue": "",
+                            "field": "aws_secret_key",
+                            "options": {
+                                "placeholder": ""
+                            }
+                        },
+                        {
+                            "help": "This role should be assumable from the Splunk instance using the above AWS credentials (if specified) and give access to read the IAM User tags.",
+                            "required": false,
+                            "encrypted": true,
+                            "validators": [
+                                {
+                                    "minLength": 0,
+                                    "type": "string",
+                                    "errorMsg": "Max length of text input is 8192",
+                                    "maxLength": 8192
+                                }
+                            ],
+                            "type": "text",
+                            "label": "IAM role ARN",
+                            "defaultValue": "",
+                            "field": "iam_role_arn",
+                            "options": {
+                                "placeholder": "arn:aws:iam::123456789012:role/getIAMUserTags"
+                            }
+                        }
+                    ], 
+                    "title": "Add-on Settings", 
+                    "name": "additional_parameters"
+                }
+            ], 
+            "title": "Configuration"
+        }
+    }, 
+    "meta": {
+        "restRoot": "livehybrid_udf_publisher",
+        "displayName": "UDF Publisher",
+        "version": "1.0.0", 
+        "name": "livehybrid_udf_publisher",
+        "apiVersion": "3.0.0"
+    }
+}

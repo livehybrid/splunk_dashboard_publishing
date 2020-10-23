@@ -1,0 +1,10 @@
+{
+    "yzmhfgqfe6xp": {
+        "search": {
+            "query": "index=_internal \n| timechart count by sourcetype",
+            "refresh": 400
+        },
+        "app": "splunk-dashboard-app",
+        "id": "yzmhfgqfe6xp"
+    }
+}

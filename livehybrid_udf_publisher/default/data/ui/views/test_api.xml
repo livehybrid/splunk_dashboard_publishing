@@ -1,0 +1,78 @@
+<dashboard script="tokenlinks.js">
+  <label>Test API</label>
+  <search id="baseSync">
+    <query>|publishersync</query>
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+    <sampleRatio>1</sampleRatio>
+  </search>
+  <description>Click a row to view API results</description>
+  <row depends="$form.search$">
+    <panel>
+      <html>
+        <button class="btn" data-unset-token="form.search" data-value="">Close Search</button>
+      </html>
+      <html>
+        <h1>
+          Search
+        </h1>
+
+      </html>
+    </panel>
+  </row>
+  <row depends="$form.search$">
+    <panel>
+      <table>
+        <search base="baseSync">
+          <query>| search searchid ="$form.search$" | table search | dedup search | rename search AS _raw | spath | fields - _raw</query>
+        </search>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$form.search$">
+    <panel>
+      <html>
+       <br/>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search base="baseSync">
+          <query> | eval Test="Click to Test API"
+| eval search="Expand"
+|table collection app searchid search Test</query>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="Test">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <format type="color" field="search">
+          <colorPalette type="sharedList"></colorPalette>
+          <scale type="sharedCategory"></scale>
+        </format>
+        <drilldown target="NewWindow">
+          <condition match="match('click.value2', &quot;Click to Test API&quot;)">
+            <link target="_blank">https://48li090872.execute-api.eu-west-2.amazonaws.com/onboarding/api/data/$row.searchid$</link>
+          </condition>
+          <condition match="match('click.value2', &quot;Expand&quot;)">
+            <set token="form.search">$row.searchid$</set>
+          </condition>
+          <condition field="*">
+            <set token="x">did not match</set>
+          </condition>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</dashboard>

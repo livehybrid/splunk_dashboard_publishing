@@ -1,0 +1,1 @@
+This is used to configured the Splunk Add-on for AWS

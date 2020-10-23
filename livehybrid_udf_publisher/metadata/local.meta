@@ -1,0 +1,64 @@
+[app/ui]
+owner = admin
+version = 8.0.2.1
+modtime = 1590447774.611368000
+
+[app/launcher]
+owner = admin
+version = 8.0.2.1
+modtime = 1590447774.647448000
+
+[app/package/check_for_updates]
+version = 8.0.2.1
+modtime = 1590447774.676127000
+
+[views/health_check]
+owner = admin
+version = 8.0.2.1
+modtime = 1590438093.317052000
+
+[views/test_api]
+owner = admin
+version = 7.3.1
+modtime = 1601851904.496961000
+
+[nav/default]
+version = 7.3.1
+modtime = 1598569898.660858000
+
+[views/udf_dashboards]
+access = read : [ * ], write : [ * ]
+export = none
+owner = admin
+version = 7.3.1
+modtime = 1598573046.630226000
+
+[views/publish_dashboard]
+owner = admin
+version = 7.3.1
+modtime = 1603309219.639864000
+
+[passwords/credential%3A__REST_CREDENTIAL__%23livehybrid_udf_publisher%23configs%2Fconf-livehybrid_udf_publisher_settings%3Aadditional_parameters%60%60splunk_cred_sep%60%601%3A]
+owner = admin
+version = 7.3.1
+modtime = 1603201898.169998000
+
+[passwords/credential%3A__REST_CREDENTIAL__%23livehybrid_udf_publisher%23configs%2Fconf-livehybrid_udf_publisher_settings%3Aadditional_parameters%60%60splunk_cred_sep%60%602%3A]
+owner = admin
+version = 7.3.1
+modtime = 1603201898.187427000
+
+[livehybrid_udf_publisher_settings/additional_parameters]
+version = 7.3.1
+modtime = 1603201898.193168000
+
+[livehybrid_udf_publisher_settings/logging]
+version = 8.0.2.1
+modtime = 1591043255.627148000
+
+[views/local_dashboards]
+access = read : [ * ], write : [ admin, power ]
+export = none
+owner = nhsadmin
+version = 7.3.1
+modtime = 1598569868.616504000

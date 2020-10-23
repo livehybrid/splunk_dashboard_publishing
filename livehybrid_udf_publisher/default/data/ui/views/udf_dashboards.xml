@@ -1,0 +1,36 @@
+<dashboard>
+  <label>Local Dashboards</label>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>|rest /servicesNS/-/splunk-dashboard-app/data/ui/views splunk_server=local | search (isDashboard=1 AND isVisible=1 AND (version=2 OR version=1))
+|rename eai:acl.app AS app
+|table app label title updated version | eval Publish=IF(version&gt;1,"Publish Dashboard","Upgrade dashboard to V2")</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">20</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <format type="color" field="Publish">
+          <colorPalette type="map">{"Publish Dashboard":#4FA484,"Upgrade dashboard to V2":#F1813F}</colorPalette>
+        </format>
+        <drilldown target="NewWindow">
+          <condition match="match('click.value2', &quot;Publish Dashboard&quot;)">
+            <link target="_blank">/app/livehybrid_udf_publisher/publish_dashboard?form.udf_dashboard=$row.title$&amp;form.app=$row.app$</link>
+          </condition>
+          <condition field="*">
+            <set token="x">did not match</set>
+          </condition>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</dashboard>

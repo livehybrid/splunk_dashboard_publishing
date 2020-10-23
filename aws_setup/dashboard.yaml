@@ -1,0 +1,442 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  Nonce:
+    Type: String
+Outputs:
+  Host:
+    Value: !GetAtt Distribution.DomainName
+  S3Bucket:
+    Value: !GetAtt Bucket.Arn
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+  Distribution:
+    DependsOn:
+      - LambdaEdgeDashDefinitionVersion
+      - IndexLambdaVersion
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id:
+              Ref: Bucket
+            DomainName:
+              Fn::GetAtt:
+                - Bucket
+                - DomainName
+            S3OriginConfig:
+              OriginAccessIdentity:
+                Fn::Sub: origin-access-identity/cloudfront/${CloudFrontCloudFrontOriginAccessIdentity}
+        OriginGroups:
+          Quantity: 0
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - HEAD
+            - GET
+          CachedMethods:
+            - HEAD
+            - GET
+          Compress: false
+          DefaultTTL: 3600
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: false
+          MaxTTL: 86400
+          MinTTL: 0
+          SmoothStreaming: false
+          TargetOriginId:
+            Ref: Bucket
+          ViewerProtocolPolicy: redirect-to-https
+          LambdaFunctionAssociations:
+            - EventType: origin-request
+              LambdaFunctionARN:
+                Fn::GetAtt:
+                  - LambdaEdgeRewriteVersion
+                  - FunctionArn
+        CacheBehaviors:
+          - AllowedMethods:
+              - HEAD
+              - GET
+            CachedMethods:
+              - HEAD
+              - GET
+            Compress: false
+            DefaultTTL: 86400
+            ForwardedValues:
+              Cookies:
+                Forward: none
+              QueryString: false
+            LambdaFunctionAssociations:
+              - EventType: origin-request
+                LambdaFunctionARN:
+                  Fn::GetAtt:
+                    - LambdaEdgeDashDefinitionVersion
+                    - FunctionArn
+              - EventType: viewer-request
+                LambdaFunctionARN:
+                  Fn::GetAtt:
+                    - LambdaEdgeDashDefinitionVersion
+                    - FunctionArn
+            MaxTTL: 31536000
+            MinTTL: 0
+            PathPattern: dashboard/*/definition.json
+            SmoothStreaming: false
+            TargetOriginId:
+              Ref: Bucket
+            ViewerProtocolPolicy: redirect-to-https
+          - AllowedMethods:
+              - HEAD
+              - GET
+            CachedMethods:
+              - HEAD
+              - GET
+            Compress: false
+            DefaultTTL: 86400
+            ForwardedValues:
+              Cookies:
+                Forward: none
+              QueryString: false
+            LambdaFunctionAssociations:
+              - EventType: origin-request
+                LambdaFunctionARN:
+                  Fn::GetAtt:
+                    - IndexLambdaVersion
+                    - FunctionArn
+              - EventType: viewer-request
+                LambdaFunctionARN:
+                  Fn::GetAtt:
+                    - IndexLambdaVersion
+                    - FunctionArn
+            MaxTTL: 31536000
+            MinTTL: 0
+            PathPattern: api/*
+            SmoothStreaming: false
+            TargetOriginId:
+              Ref: Bucket
+            ViewerProtocolPolicy: redirect-to-https
+        Comment: NA
+        PriceClass: PriceClass_100
+        Enabled: true
+        Restrictions:
+          GeoRestriction:
+            RestrictionType: none
+        HttpVersion: http2
+        DefaultRootObject: index.html
+        IPV6Enabled: false
+  CloudFrontCloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: dashapi
+  CloudFrontCloudFrontOriginAccessIdentity2:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: dashapi
+  DynamoDBDashboards:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: dashid
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      TableName: splunk-dashboards
+      KeySchema:
+        - AttributeName: dashid
+          KeyType: HASH
+  DynamoDBCollections:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: searchid
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      TableName: splunk-collections
+      KeySchema:
+        - AttributeName: searchid
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: searchid-index
+          KeySchema:
+            - AttributeName: searchid
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 0
+            WriteCapacityUnits: 0
+  IndexLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Timeout: '5'
+      Role:
+        Fn::GetAtt:
+          - IndexLambdaRole
+          - Arn
+      Runtime: nodejs12.x
+      Handler: api/api.handler
+      Code:
+        S3Bucket: <TO FOLLOW>
+        S3Key: <TO FOLLOW>
+  IndexLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - edgelambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - Fn::Join: ["",["arn:aws:secretsmanager:",!Ref "AWS::Region",":",!Ref "AWS::AccountId", ":secret:/splunkdash/*"]]
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:GetRecords
+                Resource:
+                  - Fn::GetAtt: [DynamoDBCollections, Arn]
+                  - Fn::Join: ["",[
+                    {
+                      "Fn::GetAtt": [ DynamoDBCollections , Arn ]
+                    },
+                    "/*"
+                  ]
+                  ]
+                  - Fn::GetAtt: [DynamoDBDashboards, Arn]
+                  - Fn::Join: ["",[{
+                      "Fn::GetAtt": [ DynamoDBDashboards , Arn ]
+                    },
+                    "/*"
+                    ]
+                  ]
+  IndexLambdaVersion:
+    Type: Custom::LatestLambdaVersion
+    Properties:
+      ServiceToken: !GetAtt PublishLambdaVersion.Arn
+      FunctionName: !Ref IndexLambda
+      Nonce: !Ref Nonce
+  PublishLambdaVersion:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Role:
+        Fn::GetAtt:
+          - PublishLambdaRole
+          - Arn
+      Code:
+        ZipFile: "const {Lambda} = require('aws-sdk')\nconst {send, SUCCESS, FAILED}\
+          \ = require('cfn-response')\nconst lambda = new Lambda()\nexports.handler\
+          \ = (event, context) => {\n  const {RequestType, ResourceProperties: {FunctionName}}\
+          \ = event\n  if (RequestType == 'Delete') return send(event, context, SUCCESS)\n\
+          \  lambda.publishVersion({FunctionName}, (err, {FunctionArn}) => {\n   \
+          \ err\n      ? send(event, context, FAILED, err)\n      : send(event, context,\
+          \ SUCCESS, {FunctionArn})\n  })\n}\n"
+  PublishLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: PublishVersion
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:PublishVersion
+                Resource: '*'
+  LambdaEdgeRewrite:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+          - IndexLambdaRole
+          - Arn
+      Code:
+        ZipFile: |
+          'use strict';
+          const pointsToFile = uri => /\/[^/]+\.[^/]+$/.test(uri);
+          const isDashboard = uri => /\/dashboard\/[^/]+\/view$/.test(uri);
+
+          const hasTrailingSlash = uri => uri.endsWith('/');
+
+          exports.handler = (event, context, callback) => {
+              var request = event.Records[0].cf.request;
+              const olduri = request.uri;
+              const qs = request.querystring;
+
+              if (isDashboard(olduri)) {
+                  request.uri = "/dashboard.html";
+                  callback(null,request);
+              }
+
+              if (pointsToFile(olduri)) {
+                  callback(null, request);
+                  return;
+              }
+
+              if (!hasTrailingSlash(olduri)) {
+                  request.uri = olduri + '.html';
+              } else {
+                  request.uri = olduri + 'index.html';
+              }
+              return callback(null, request);
+            };
+      Runtime: nodejs12.x
+      Timeout: '5'
+      Tags:
+        - Key: Application
+          Value: APIRewrite
+  LambdaEdgeRewriteVersion:
+    Type: Custom::LatestLambdaVersion
+    Properties:
+      ServiceToken: !GetAtt PublishLambdaVersion.Arn
+      FunctionName: !Ref LambdaEdgeRewrite
+      Nonce: !Ref Nonce
+
+  LambdaEdgeDashDefinition:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+          - IndexLambdaRole
+          - Arn
+      Code:
+        ZipFile: |
+          var AWS = require("aws-sdk");
+          AWS.config.update({
+              region: "us-east-1"
+          });
+
+          const qualifiedSearchString = query => (query.trim().startsWith('|') ? query : `search ${query}`);
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+          exports.handler =  async function(event, context, callback) {
+              const request = event.Records[0].cf.request;
+              if (request.uri.startsWith("/dashboard/") != true)  {
+                  return {
+                      status: '404',
+                      statusDescription: 'OK',
+                      headers: {
+                          'cache-control': [{
+                              key: 'Cache-Control',
+                              value: 'max-age=3600, public'
+                          }],
+                          'content-type': [{
+                              key: 'Content-Type',
+                              value: 'text/html'
+                          }],
+                          'content-encoding': [{
+                              key: 'Content-Encoding',
+                              value: 'UTF-8'
+                          }],
+                          'expires': [{
+                              key: 'Expires',
+                              value: '300'
+                          }],
+                      },
+                      body: "40h4",
+                  };
+              }
+              //request.uri.lastIndexOf('/', request.uri.lastIndexOf('/')-1)
+              const id = request.uri.split("/")[2]
+              console.log(request.uri)
+              console.log('Looking up datasource ID %o', id);
+
+              var dynamodb =  new AWS.DynamoDB({apiVersion: '2012-08-10',region:'us-east-1'});
+              var params = {
+                  Key: {
+                      "dashid": {"S": id}
+                  },
+                  TableName: "splunk-dashboards"
+              };
+              var result = await dynamodb.getItem(params).promise()
+              var json_result = AWS.DynamoDB.Converter.unmarshall(result.Item);
+              console.log(json_result)
+              console.log(result)
+              if (!result.Item) {
+                  console.log('ERROR: No dashboard with ID %o found', id);
+                  callback(null, {
+                      status: '500',
+                      body: { error: 'Dashboard not found' },
+                      headers: {
+                          'Content-Type': [{
+                              key: 'Content-Type',
+                              value: 'text/plain'
+                          }],
+                          'Access-Control-Allow-Origin': [{
+                              key: 'Access-Control-Allow-Origin',
+                              value: '*'
+                          }],
+                          'cache-control': [{
+                              key: 'Cache-Control',
+                              value: 's-maxage=3600'
+                          }]
+                      },
+                  });
+              }
+
+              var dashdef = json_result['config'];
+              callback(null, {
+                  status: '200',
+                  statusDescription: 'OK',
+                  body: JSON.stringify(dashdef),
+                  headers: {
+                      'Content-Type': [{
+                          key: 'Content-Type',
+                          value: 'text/plain'
+                      }],
+                      'Access-Control-Allow-Origin': [{
+                          key: 'Access-Control-Allow-Origin',
+                          value: '*'
+                      }],
+                      'cache-control': [{
+                          key: 'Cache-Control',
+                          value: 'public, maxage=3600'
+                      }],
+                      'expires': [{
+                          key: 'Expires',
+                          value: '300'
+                      }],
+                  },
+              });
+
+          };
+      Runtime: nodejs12.x
+      Timeout: '5'
+      Tags:
+        - Key: Application
+          Value: APIRewrite
+  LambdaEdgeDashDefinitionVersion:
+    DependsOn:
+      - LambdaEdgeDashDefinition
+    Type: Custom::LatestLambdaVersion
+    Properties:
+      ServiceToken: !GetAtt PublishLambdaVersion.Arn
+      FunctionName: !Ref LambdaEdgeDashDefinition
+      Nonce: !Ref Nonce

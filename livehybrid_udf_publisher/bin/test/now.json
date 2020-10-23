@@ -1,0 +1,7 @@
+{
+  "env": {
+    "SPLUNKD_URL": "https://localhost:8089",
+    "SPLUNKD_USER": "admin",
+    "SPLUNKD_PASSWORD": "@udfpub-test-splunkd-password"
+  }
+}

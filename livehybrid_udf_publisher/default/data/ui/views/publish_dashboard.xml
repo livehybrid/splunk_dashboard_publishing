@@ -1,0 +1,217 @@
+<form script="tokenlinks.js">
+  <label>Publish Dashboard</label>
+  <init>
+    <set token="ShowStartup"></set>
+  </init>
+  <description>Click Submit to continue</description>
+  <fieldset submitButton="true">
+    <input type="dropdown" token="app">
+      <label>App</label>
+      <fieldForLabel>eai:acl.app</fieldForLabel>
+      <fieldForValue>eai:acl.app</fieldForValue>
+      <search>
+        <query>|rest /servicesNS/-/splunk-dashboard-app/data/ui/views | search (isDashboard=1 AND isVisible=1 AND (version=2 OR version=1)) | dedup eai:acl.app</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="dropdown" token="udf_dashboard">
+      <label>Dashboard</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <search>
+        <query>|rest /servicesNS/-/splunk-dashboard-app/data/ui/views | search (isDashboard=1 AND isVisible=1 AND (version=2 OR version=1)) eai:acl.app=$app$ | dedup title</query>
+      </search>
+    </input>
+  </fieldset>
+  <row depends="$NeverShow$">
+    <panel depends="$NeverShow$">
+      <input depends="$NeverShow$" type="link" token="SelectedCommand">
+        <label></label>
+        <choice value="DS">DS</choice>
+        <choice value="Viz">Viz</choice>
+        <change>
+          <unset token="ShowDS"></unset>
+          <unset token="ShowViz"></unset>
+          <unset token="ShowStartup"></unset>
+          <set token="form.DevResetView">$value$</set>
+        </change>
+      </input>
+      <input depends="$NeverShow$" type="text" token="DevRefreshResetView">
+        <label>DEV: Refresh Reset View</label>
+        <change>
+          <condition value="DS">
+            <set token="ShowDS"></set>
+            <set token="ShowDSView"></set>
+          </condition>
+          <condition value="Viz">
+            <set token="ShowViz"></set>
+            <set token="ShowVizView"></set>
+          </condition>
+          <condition value="Refresh">
+            <set token="form.DevResetView">$tempTok$</set>
+            <set token="form.DevRefreshResetView">$tempTok$</set>
+          </condition>
+          <condition>
+            <set token="tempTok">$form.DevResetView$</set>
+            <set token="form.DevResetView"></set>
+            <set token="form.DevShowView"></set>
+            <eval token="form.DevRefreshShowView">now()</eval>
+          </condition>
+        </change>
+      </input>
+      <input depends="$NeverShow$" type="text" token="DevRefreshShowView">
+        <label>DEV: Refresh Show View</label>
+        <default></default>
+        <change>
+          <set token="form.DevRefreshResetView">Refresh</set>
+        </change>
+      </input>
+      <input depends="$NeverShow$" type="text" token="DevResetView">
+        <label>DEV: Reset View</label>
+        <default></default>
+        <change>
+          <unset token="ShowDS"></unset>
+          <unset token="ShowDSView"></unset>
+          <unset token="ShowViz"></unset>
+          <unset token="ShowVizView"></unset>
+          <set token="form.DevShowView">$form.SelectedCommand$</set>
+        </change>
+      </input>
+      <input depends="$NeverShow$" type="text" token="DevShowView">
+        <label>DEV: Show View</label>
+        <default></default>
+        <change>
+          <condition value="DS">
+            <set token="ShowDS"></set>
+            <set token="ShowDSView"></set>
+            <set token="ShowDisableButton"></set>
+          </condition>
+          <condition value="Viz">
+            <set token="ShowViz"></set>
+            <set token="ShowVizView"></set>
+            <set token="ShowDisableButton"></set>
+            <unset token="ShowStartup"></unset>
+          </condition>
+        </change>
+      </input>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <html depends="$ShowStartup$">
+        <button class="btn" data-set-token="form.SelectedCommand" data-value="DS">Deploy/Update Datasources</button>
+        <button class="btn" data-set-token="form.SelectedCommand" data-value="Viz">Deploy/Update Visualization config</button>
+      </html>
+      <html depends="$ShowDisableButton$">
+        <button class="btn" disabled="disabled" data-value="DS">Deploy/Update Datasources</button>
+        <button class="btn" disabled="disabled" data-set-token="form.SelectedCommand" data-value="Viz">Deploy/Update Visualization config</button>
+      </html>
+      <html depends="$ShowDSView$">
+        <h1>
+          Data Sources
+        </h1>
+      </html>
+      <table depends="$ShowDSView$">
+        <search>
+          <finalized>
+            <unset token="ShowDisableButton"></unset>
+            <set token="ShowStartup"></set>
+          </finalized>
+          <query>|rest /servicesNS/-/splunk-dashboard-app/data/ui/views splunk_server=local | search $ShowDS$ (isDashboard=1 AND isVisible=1 AND (version=2 OR version=1)) eai:acl.app=$app$ title=$udf_dashboard$ | table eai:data | rename eai:data AS _raw |   rex field=_raw "&lt;definition&gt;(?&lt;definition&gt;.+)&lt;/definition&gt;" |table definition | eval _raw=replace(definition,"&amp;quot;","\"") | table _raw | spath
+|table dataSources.*
+|rename dataSources.* AS *
+    | untable n fieldname fieldvalue
+    |rex field=fieldname "(?&lt;dsID&gt;[^\.]+)\.(?&lt;dsField&gt;.*)"
+    |table dsID dsField fieldvalue| eval server=[ | rest /services/authentication/users splunk_server=local | dedup splunk_server | table splunk_server | return $splunk_server | format ] | publisherdatasources collection=$udf_dashboard$</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="Status">
+          <colorPalette type="map">{"Added/Updated":#53A051}</colorPalette>
+        </format>
+      </table>
+      <html depends="$ShowVizView$">
+        <h1>
+          Vizualization
+        </h1>
+      </html>
+      <table depends="$ShowVizView$">
+        <search>
+          <query>|rest /servicesNS/-/splunk-dashboard-app/data/ui/views splunk_server=local | search $ShowViz$ (isDashboard=1 AND isVisible=1 AND (version=2 OR version=1)) eai:acl.app=$app$ title=$udf_dashboard$ | table eai:data | rename eai:data AS _raw |  rex field=_raw "&lt;definition&gt;(?&lt;definition&gt;.+)&lt;/definition&gt;" |table definition | eval _raw=replace(definition,"&amp;quot;","\"") | table _raw | spath
+|eval server=[ | rest /services/authentication/users splunk_server=local | dedup splunk_server | table splunk_server | return $splunk_server | format ] | publishervisualisation collection=$udf_dashboard$</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Data Source(s)</title>
+        <search>
+          <query>|rest /servicesNS/-/splunk-dashboard-app/data/ui/views splunk_server=local | search (isDashboard=1 AND isVisible=1 AND (version=2 OR version=1)) eai:acl.app=$app$ title=$udf_dashboard$ | table eai:data |  table eai:data | rename eai:data AS _raw | rex field=_raw "&lt;definition&gt;(?&lt;definition&gt;.+)&lt;/definition&gt;" |table definition | eval _raw=replace(definition,"&amp;quot;","\"") | table _raw | spath
+|table dataSources.*
+|rename dataSources.* AS *
+    | untable n fieldname fieldvalue
+    |rex field=fieldname "(?&lt;dsID&gt;[^\.]+)\.(?&lt;dsField&gt;.*)"
+    |table dsID dsField fieldvalue</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Visualizations</title>
+        <search>
+          <query>|rest /servicesNS/-/splunk-dashboard-app/data/ui/views splunk_server=local | search (isDashboard=1 AND isVisible=1 AND (version=2 OR version=1)) eai:acl.app=$app$ title=$udf_dashboard$ | table eai:data |  table eai:data | rename eai:data AS _raw | rex field=_raw "&lt;definition&gt;(?&lt;definition&gt;.+)&lt;/definition&gt;" | eval _raw=replace(definition,"&amp;quot;","\"") | fields _raw| spath input=_raw output=visualization path=visualizations | table visualization | spath input=visualization | table * | untable n fieldname fieldvalue | rex field=fieldname "(?&lt;vizName&gt;[^\.]+)\." | eval vars=mvzip(fieldname, fieldvalue,"=") | eval option=replace(fieldname,vizName+".","") | search option IN("dataSources.*","type") | stats values(fieldvalue) AS value by vizName, option | eval options=mvzip(option,value,"=") | stats values(options) AS options by vizName</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Whole Dashboard JSON</title>
+      <table>
+        <title>Viz(s)</title>
+        <search>
+          <query>|rest /servicesNS/-/splunk-dashboard-app/data/ui/views splunk_server=local | search (isDashboard=1 AND isVisible=1 AND (version=2 OR version=1)) eai:acl.app=$app$ title=$udf_dashboard$ | table eai:data |  table eai:data | rename eai:data AS _raw | rex field=_raw "&lt;definition&gt;(?&lt;definition&gt;.+)&lt;/definition&gt;" | eval _raw=replace(definition,"&amp;quot;","\"") | fields _raw 
+| eval _raw=replace(_raw,"true","True") 
+| eval _raw=replace(_raw,"false","False")</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Viz JSON</title>
+      <table>
+        <title>Viz(s)</title>
+        <search>
+          <query>|rest /servicesNS/-/splunk-dashboard-app/data/ui/views splunk_server=local | search (isDashboard=1 AND isVisible=1 AND (version=2 OR version=1)) eai:acl.app=$app$ title=$udf_dashboard$ | table eai:data |  table eai:data | rename eai:data AS _raw | rex field=_raw "&lt;definition&gt;(?&lt;definition&gt;.+)&lt;/definition&gt;" | eval _raw=replace(definition,"&amp;quot;","\"") | fields _raw| spath input=_raw output=visualization path=visualizations | table visualization</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
